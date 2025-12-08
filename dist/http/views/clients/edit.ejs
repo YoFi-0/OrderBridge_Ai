@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>تعديل بيانات العميل</title>
+    <style>
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"] { width: 100%; padding: 8px; box-sizing: border-box; }
+        .container { max-width: 500px; margin: 0 auto; padding: 20px; }
+        button { padding: 10px 20px; background-color: #007bff; color: white; border: none; cursor: pointer; }
+        
+        /* تنسيق خاص للـ Checkbox */
+        .checkbox-group { display: flex; align-items: center; margin-top: 10px; }
+        .checkbox-group input { width: auto; margin-left: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>تعديل بيانات: <%= client.name %></h1>
+
+        <% if (typeof error !== 'undefined') { %>
+            <p style="color: red; background: #ffe6e6; padding: 10px; border-radius: 4px;"><%= error %></p>
+        <% } %>
+
+        <form action="/clients/update/<%= client.id %>" method="POST">
+            
+            <div class="form-group">
+                <label for="name">الاسم:</label>
+                <input type="text" id="name" name="name" value="<%= client.name %>" required>
+            </div>
+
+            <div class="form-group">
+                <label for="phoneNumber">رقم الهاتف:</label>
+                <input type="text" id="phoneNumber" name="phoneNumber" value="<%= client.phoneNumber %>" required>
+            </div>
+
+            <div class="form-group">
+                <label for="apiKey">API Key (النظام):</label>
+                <input type="text" id="apiKey" name="apiKey" value="<%= client.apiKey %>">
+            </div>
+
+            <div class="form-group checkbox-group">
+                <input type="checkbox" id="isBan" name="isBan" value="true" <%= client.isBan ? 'checked' : '' %>>
+                <label for="isBan" style="margin-bottom: 0;">حظر هذا العميل (Ban)</label>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button type="submit">حفظ التعديلات</button>
+                <a href="/clients" style="margin-right: 10px; text-decoration: none; color: #666;">إلغاء</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

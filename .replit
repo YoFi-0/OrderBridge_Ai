@@ -1,0 +1,50 @@
+entrypoint = "index.js"
+modules = ["nodejs-22"]
+hidden = [".config", "package-lock.json"]
+
+[gitHubImport]
+requiredFiles = [".replit", "replit.nix", "package.json", "package-lock.json"]
+
+[nix]
+channel = "stable-24_11"
+
+[deployment]
+run = ["node", "index.js"]
+deploymentTarget = "autoscale"
+ignorePorts = false
+
+[agent]
+expertMode = true
+
+[workflows]
+
+[[workflows.workflow]]
+name = "run"
+mode = "sequential"
+author = 20390335
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "yarn dev"
+
+[[workflows.workflow]]
+name = "install"
+mode = "sequential"
+author = 20390335
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "yarn"
+
+[[workflows.workflow]]
+name = "install lib"
+mode = "sequential"
+author = 20390335
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "yarn add openai"
+
+[[ports]]
+localPort = 8000
+externalPort = 80

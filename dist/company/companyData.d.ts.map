@@ -1,0 +1,1 @@
+{"version":3,"file":"companyData.d.ts","sourceRoot":"","sources":["../../src/company/companyData.ts"],"names":[],"mappings":"AAAA,UAAU,WAAW;IACnB,SAAS,EAAE,GAAG,CAAC;IACf,WAAW,EAAE,GAAG,CAAC;IACjB,YAAY,EAAE,GAAG,CAAC;IAClB,aAAa,EAAE,GAAG,CAAC;IACnB,oBAAoB,EAAE,GAAG,CAAC;IAC1B,QAAQ,EAAE,GAAG,CAAC;CACf;AAED,wBAAsB,cAAc,IAAI,OAAO,CAAC,WAAW,CAAC,CAyE3D"}

@@ -1,0 +1,83 @@
+interface CompanyData {
+  basicInfo: any;
+  contactInfo: any;
+  workingHours: any;
+  financialInfo: any;
+  shippingAndLogistics: any;
+  policies: any;
+}
+
+export async function getCompanyInfo(): Promise<CompanyData> {
+  // محاكاة لجلب البيانات من قاعدة البيانات أو ملف إعدادات
+  return {
+    // 1. المعلومات الأساسية
+    basicInfo: {
+      companyName: "مؤسسة الأفق الحديث للتوريد",
+      activity: "توريد مواد الديكور، ورق الجدران، ومستلزمات التشطيب",
+      taxNumber: "3000xxxxxxxxxxx", // الرقم الضريبي مهم جداً للفواتير
+      commercialRegistration: "4030xxxxxx", // السجل التجاري
+    },
+
+    // 2. معلومات الاتصال والموقع
+    contactInfo: {
+      phone: "05xxxxxxxx",
+      whatsapp: "https://wa.me/9665xxxxxxxx",
+      email: "sales@example.com",
+      website: "www.example.com",
+      address: "المملكة العربية السعودية، جدة، حي البلد، شارع الذهب",
+      googleMapsLocation: "https://maps.google.com/?q=...",
+    },
+
+    // 3. أوقات العمل (مهمة جداً للرد على "متى تفتحون؟")
+    workingHours: {
+      showroom: "من السبت إلى الخميس: 9:00 صباحاً - 10:00 مساءً",
+      warehouse: "من السبت إلى الخميس: 8:00 صباحاً - 4:00 عصراً (للاستلام)",
+      friday: "مغلق",
+      notes: "نغلق وقت الصلاة لمدة 30 دقيقة",
+    },
+
+    // 4. المعلومات المالية (الحسابات البنكية وطرق الدفع)
+    financialInfo: {
+      paymentMethods: [
+        "تحويل بنكي",
+        "مدى",
+        "فيزا/ماستركارد",
+        "كاش (في المعرض فقط)",
+      ],
+      bankAccounts: [
+        {
+          bankName: "بنك الراجحي",
+          iban: "SA00000000000000000000",
+          accountName: "مؤسسة الأفق الحديث",
+        },
+        {
+          bankName: "بنك الجزيرة",
+          iban: "SA00000000000000000000",
+          accountName: "مؤسسة الأفق الحديث",
+        },
+      ],
+      vatRate: "15% (الأسعار المعروضة غالباً غير شاملة الضريبة، يرجى التأكيد)",
+    },
+
+    // 5. الشحن واللوجستيات (الأكثر سؤالاً)
+    shippingAndLogistics: {
+      localDelivery:
+        "التوصيل داخل جدة خلال 24 ساعة (50 ريال، أو مجاني للطلبات فوق 2000 ريال)",
+      domesticShipping:
+        "الشحن لباقي مدن المملكة عبر شركات الشحن (زاجل، التيار السريع) - الدفع عند الاستلام لرسوم الشحن",
+      shippingTime: "من 3 إلى 5 أيام عمل",
+      pickupOption: "متاح استلام البضاعة من المستودع مباشرة بعد تأكيد الطلب",
+    },
+
+    // 6. سياسات البيع والاسترجاع (حاسمة للموردين)
+    policies: {
+      returnPolicy:
+        "الاسترجاع متاح خلال 7 أيام من تاريخ الفاتورة بشرط سلامة الكرتون وعدم فتح التغليف",
+      exchangePolicy: "الاستبدال متاح خلال 14 يوماً",
+      bulkOrders:
+        "للكميات الكبيرة (فوق 50 لفة/قطعة) يرجى التواصل مع الإدارة للحصول على عرض سعر خاص",
+      defects:
+        "في حال وجود عيب مصنعي، يتم استبدال المنتج فوراً وتحمل تكاليف الشحن",
+    },
+  };
+}

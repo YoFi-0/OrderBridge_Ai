@@ -1,0 +1,138 @@
+// demo data
+export const mockProducts = [
+    // 1. ورق جدران كلاسيك
+    {
+        id: "m1245",
+        sku: "m1245",
+        name: "ورق جدران كلاسيك داماسك ذهبي",
+        description: "ورق جدران فاخر بنقشة الداماسك الكلاسيكية، ملمس بارز، مناسب للمجالس والصالات الرسمية، قابل للغسيل.",
+        availability: {
+            status: "in_stock",
+            quantity: 85, // عدد الرولات
+            warehouse_location: "WALL-SEC-A1",
+        },
+        pricing: {
+            currency: "SAR",
+            unit_price: 120.0,
+            bulk_price: 110.0, // سعر خاص للكميات
+        },
+        physical_specs: {
+            weight: { value: 1.2, unit: "kg" },
+            dimensions: { length: 10, width: 0.53, height: 0, unit: "meter" }, // الرول القياسي 10 متر × 53 سم
+        },
+        attributes: {
+            material: "Vinyl (PVC)",
+            pattern: "Damask",
+            origin: "Italy",
+            color: "Gold/Beige",
+            washable: true,
+        },
+        alternatives: ["532753"],
+    },
+    // 2. ورق جدران مودرن (سادة خشن)
+    {
+        id: "532753",
+        sku: "532753",
+        name: "ورق جدران مودرن رمادي خيش",
+        description: "ورق جدران بتصميم مودرن يشبه قماش الخيش، لون هادئ وعصري، مثالي لغرف النوم والمكاتب.",
+        availability: {
+            status: "in_stock",
+            quantity: 200,
+            warehouse_location: "WALL-SEC-B3",
+        },
+        pricing: {
+            currency: "SAR",
+            unit_price: 85.0,
+        },
+        physical_specs: {
+            weight: { value: 1.0, unit: "kg" },
+            dimensions: { length: 10, width: 0.53, height: 0, unit: "meter" },
+        },
+        attributes: {
+            material: "Non-Woven",
+            texture: "Rough",
+            color: "Light Grey",
+            style: "Modern",
+        },
+    },
+    // 3. ورق جدران ثلاثي الأبعاد (حجر)
+    {
+        id: "33353",
+        sku: "33353",
+        name: "ورق جدران 3D تصميم حجر طبيعي",
+        description: "يعطي إيحاء بالحجر الطبيعي البارز، ممتاز لتزيين جدار التلفزيون أو المداخل.",
+        availability: {
+            status: "in_stock",
+            quantity: 40,
+            warehouse_location: "WALL-SEC-C1",
+        },
+        pricing: {
+            currency: "SAR",
+            unit_price: 95.0,
+        },
+        physical_specs: {
+            weight: { value: 1.3, unit: "kg" },
+            dimensions: { length: 10, width: 0.53, height: 0, unit: "meter" },
+        },
+        attributes: {
+            effect: "3D Stone",
+            material: "Vinyl",
+            color: "Brown/Grey Mix",
+            install_type: "Glue required",
+        },
+    },
+    // 4. ورق جدران ستيل (مقاس كوري كبير) - حالة: مخلص
+    {
+        id: "82101-1",
+        sku: "82101-1",
+        name: "ورق جدران كوري سادة 16 متر",
+        description: "رول كوري كبير الحجم، اقتصادي، لون أبيض لؤلؤي سادة، يغطي مساحة كبيرة.",
+        availability: {
+            status: "out_of_stock", // غير متوفر
+            quantity: 0,
+            warehouse_location: "WALL-KOR-Z",
+        },
+        pricing: {
+            currency: "SAR",
+            unit_price: 250.0, // سعر الرول الكبير
+        },
+        physical_specs: {
+            weight: { value: 4.5, unit: "kg" }, // ثقيل
+            dimensions: { length: 15.6, width: 1.06, height: 0, unit: "meter" }, // مقاس كوري
+        },
+        attributes: {
+            origin: "Korea",
+            size_category: "Mega Roll",
+            color: "Pearl White",
+            features: "Antibacterial",
+        },
+        alternatives: ["532753"], // نقترح الرمادي كبديل
+    },
+    // 5. ورق جدران هندسي
+    {
+        id: "82101-2",
+        sku: "82101-2",
+        name: "ورق جدران أشكال هندسية (أزرق وذهبي)",
+        description: "تصميم هندسي (Geometric) جريء، يجمع بين الفخامة والعصرية، ألوان ثابتة وقوية.",
+        availability: {
+            status: "in_stock",
+            quantity: 12, // كمية قليلة
+            warehouse_location: "WALL-SEC-D5",
+        },
+        pricing: {
+            currency: "SAR",
+            unit_price: 145.0,
+        },
+        physical_specs: {
+            weight: { value: 1.1, unit: "kg" },
+            dimensions: { length: 10, width: 0.53, height: 0, unit: "meter" },
+        },
+        attributes: {
+            style: "Art Deco",
+            pattern: "Triangles",
+            colors: "Navy Blue & Gold",
+            finish: "Metallic",
+        },
+    },
+];
+//# sourceMappingURL=productsData.js.map

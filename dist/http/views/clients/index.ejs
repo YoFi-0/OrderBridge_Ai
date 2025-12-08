@@ -1,0 +1,95 @@
+                                                <!DOCTYPE html>
+                                                <html dir="rtl" lang="ar">
+                                                <head>
+                                                    <meta charset="UTF-8">
+                                                    <title>قائمة العملاء</title>
+                                                    <style>
+                                                        /* تنسيق الجدول */
+                                                        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-family: sans-serif; }
+                                                        th, td { border: 1px solid #ddd; padding: 10px; text-align: right; vertical-align: middle; }
+                                                        th { background-color: #f8f9fa; color: #333; font-weight: bold; }
+
+                                                        /* تنسيق الأزرار */
+                                                        .btn { padding: 6px 12px; text-decoration: none; color: white; border-radius: 4px; border: none; cursor: pointer; font-size: 14px; display: inline-block;}
+                                                        .btn-add { background-color: #28a745; margin-bottom: 10px; }
+                                                        .btn-edit { background-color: #007bff; }
+                                                        .btn-delete { background-color: #dc3545; }
+                                                        .action-container { display: flex; gap: 5px; }
+
+                                                        /* تنسيق المفاتيح الطويلة */
+                                                        .short-key {
+                                                            font-family: monospace;
+                                                            background: #eee;
+                                                            padding: 2px 5px;
+                                                            border-radius: 3px;
+                                                            color: #555;
+                                                            cursor: help;
+                                                        }
+
+                                                        /* تنسيق حالة الحظر */
+                                                        .badge { padding: 4px 8px; border-radius: 12px; font-size: 12px; color: white; font-weight: bold; }
+                                                        .badge-active { background-color: #28a745; } /* أخضر */
+                                                        .badge-banned { background-color: #dc3545; } /* أحمر */
+                                                    </style>
+                                                </head>
+                                                <body>
+                                                    <div style="padding: 20px;">
+                                                        <h1>قائمة العملاء</h1>
+
+                                                        <a href="/clients/create" class="btn btn-add">إضافة عميل جديد +</a>
+
+                                                        <table>
+                                                            <thead>
+                                                                <tr>
+                                                                    <th style="width: 50px;">ID</th>
+                                                                    <th>الاسم</th> <th>رقم الهاتف</th>
+                                                                    <th>الحالة</th> 
+                                                                    <th>تاريخ الإضافة</th>
+                                                                    <th>الإجراءات</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <% if (clients.length > 0) { %>
+                                                                    <% clients.forEach(function(client) { %>
+                                                                        <tr style="<%= client.isBan ? 'background-color: #fff5f5;' : '' %>">
+                                                                            <td><%= client.id %></td>
+                                                                            <td>
+                                                                                <strong><%= client.name %></strong>
+                                                                                <br>
+                                                                                <small style="color: #888;">Key: <%= client.apiKey ? client.apiKey.substring(0, 8) + '...' : '' %></small>
+                                                                            </td>
+                                                                            <td><%= client.phoneNumber %></td>
+
+                                                                            <td>
+                                                                                <% if (client.isBan) { %>
+                                                                                    <span class="badge badge-banned">محظور</span>
+                                                                                <% } else { %>
+                                                                                    <span class="badge badge-active">نشط</span>
+                                                                                <% } %>
+                                                                            </td>
+
+                                                                            <td><%= new Date(client.createdAt).toLocaleDateString('ar-EG') %></td>
+
+                                                                            <td>
+                                                                                <div class="action-container">
+                                                                                    <a href="/clients/edit/<%= client.id %>" class="btn btn-edit">تعديل</a>
+
+                                                                                    <form action="/clients/delete/<%= client.id %>" method="POST" onsubmit="return confirm('هل أنت متأكد من حذف العميل <%= client.name %>؟');">
+                                                                                        <button type="submit" class="btn btn-delete">حذف</button>
+                                                                                    </form>
+                                                                                </div>
+                                                                            </td>
+                                                                        </tr>
+                                                                    <% }); %>
+                                                                <% } else { %>
+                                                                    <tr>
+                                                                        <td colspan="6" style="text-align: center; padding: 20px; color: #777;">
+                                                                            لا يوجد عملاء مسجلين حالياً
+                                                                        </td>
+                                                                    </tr>
+                                                                <% } %>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </body>
+                                                </html>
