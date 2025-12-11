@@ -164,8 +164,7 @@ app.get("/clients/edit/:id", isLogin, async (req, res) => {
 app.post("/clients/update/:id", isLogin, async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, phoneNumber, apiKey, GeminiKey, WhatsAppKey, isBan } =
-            req.body;
+        const { name, phoneNumber, apiKey, isBan } = req.body;
         await ClientModel.update(
             {
                 name,
@@ -242,6 +241,7 @@ export let tempSocket: {
     whatsAppVerifyToken: string;
     whatsAppPhoneNumberId: string;
     openRouterKey: string;
+    workersPhoneNumbers: string[];
 }[] = [];
 
 export const ioOnProductFound = async (socketId: string) => {
@@ -290,6 +290,7 @@ io.on("connection", async (socket) => {
             whatsAppVerifyToken: data.whatsAppVerifyToken,
             whatsAppPhoneNumberId: data.whatsAppPhoneNumberId,
             openRouterKey: data.openRouterKey,
+            workersPhoneNumbers: data.workersPhoneNumbers,
         });
     });
     // Handle disconnection

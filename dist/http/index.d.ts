@@ -19,6 +19,7 @@ export declare let tempSocket: {
     whatsAppVerifyToken: string;
     whatsAppPhoneNumberId: string;
     openRouterKey: string;
+    workersPhoneNumbers: string[];
 }[];
 export declare const ioOnProductFound: (socketId: string) => Promise<Product>;
 //# sourceMappingURL=index.d.ts.map

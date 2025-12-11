@@ -7,6 +7,7 @@ import type { Product } from "../products/types.js";
 // 👇 تأكد أن المسار هنا يطابق مكان ملف المودل عندك
 import ChatModel from "../DB/chatModel.js";
 import { tempSocket } from "../http/index.js";
+import { sleep } from "../Algos/Algo_Find.js";
 
 dotenv.config();
 
@@ -99,6 +100,25 @@ class WhatsApp {
             res.sendStatus(400);
         }
     }
+    public async SendToWorkers(
+        obj: WhatsApp,
+        workersList: string[],
+        token: string,
+        phoneNumberId: string,
+        msg: string,
+    ) {
+        for (const worker of workersList) {
+            if (worker.includes("x")) {
+                continue;
+            }
+            obj.SendMsg(
+                SendedData.SendMessagetData(msg, worker),
+                token,
+                phoneNumberId,
+            );
+            await sleep(1000);
+        }
+    }
 
     public async PostWebHook(obj: WhatsApp, req: Request, res: Response) {
         if (!req.body.object) {
@@ -153,9 +173,6 @@ class WhatsApp {
                         (currentTime - lastTime) / (1000 * 60);
 
                     if (diffInMinutes > 30) {
-                        console.log(
-                            `User ${from} session expired (>30 mins). Resetting context.`,
-                        );
                         await ChatModel.destroy({ where: { phone: from } });
                         userRecord = null; // Reset to treat as new user
                     }
@@ -174,18 +191,24 @@ class WhatsApp {
 
                 let aiMsg = null;
 
-                // 3. التصنيف
                 const classification = await Classification.Search(
                     incomingText,
                     currentChat,
                     tempSocketData.openRouterKey,
                 );
-                console.log("Classification:", classification.category);
 
                 // 4. التوجيه
                 if (
                     classification.category == "question_about_previous_product"
                 ) {
+                    if (!currentProduct) {
+                        aiMsg = await Classification.GlobalQuestions(
+                            incomingText,
+                            currentChat,
+                            currentProduct!,
+                            tempSocketData.openRouterKey,
+                        );
+                    }
                     aiMsg = await Classification.QuestionAboutPreviousProduct(
                         incomingText,
                         currentChat,
@@ -209,18 +232,59 @@ class WhatsApp {
                         tempSocketData.openRouterKey,
                     );
                 } else if (classification.category == "order_question") {
-                    aiMsg = await Classification.OrderQuestion(
+                    if (!currentProduct) {
+                        aiMsg = await Classification.GlobalQuestions(
+                            incomingText,
+                            currentChat,
+                            currentProduct!,
+                            tempSocketData.openRouterKey,
+                        );
+                    } else {
+                        aiMsg = await Classification.OrderQuestion(
+                            incomingText,
+                            currentChat,
+                            currentProduct!,
+                            tempSocketData.openRouterKey,
+                        );
+                    }
+                } else if (classification.category == "order_confirmation") {
+                    if (!currentProduct) {
+                        aiMsg = await Classification.GlobalQuestions(
+                            incomingText,
+                            currentChat,
+                            currentProduct!,
+                            tempSocketData.openRouterKey,
+                        );
+                    } else {
+                        aiMsg = await Classification.OrderConfirmation(
+                            incomingText,
+                            currentChat,
+                            currentProduct!,
+                            tempSocketData.openRouterKey,
+                            from,
+                        );
+                        obj.SendToWorkers(
+                            obj,
+                            tempSocketData.workersPhoneNumbers,
+                            tempSocketData.whatsAppKey,
+                            tempSocketData.whatsAppPhoneNumberId,
+                            aiMsg.workeraimsg,
+                        );
+                    }
+                } else if (classification.category == "transfer_to_worker") {
+                    aiMsg = await Classification.TransferToWorker(
                         incomingText,
                         currentChat,
                         currentProduct!,
+                        from,
                         tempSocketData.openRouterKey,
                     );
-                } else if (classification.category == "order_confirmation") {
-                    aiMsg = await Classification.OrderConfirmation(
-                        incomingText,
-                        currentChat,
-                        currentProduct!,
-                        tempSocketData.openRouterKey,
+                    obj.SendToWorkers(
+                        obj,
+                        tempSocketData.workersPhoneNumbers,
+                        tempSocketData.whatsAppKey,
+                        tempSocketData.whatsAppPhoneNumberId,
+                        aiMsg.workeraimsg,
                     );
                 }
 
@@ -264,7 +328,6 @@ class WhatsApp {
                         },
                     );
                 }
-                console.log("ai said : ", responseText);
 
                 // 6. إرسال الرد للواتساب
                 obj.SendMsg(

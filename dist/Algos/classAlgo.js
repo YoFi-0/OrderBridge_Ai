@@ -72,22 +72,51 @@ ${userMsg}
         let product = null;
         ioSearch(socketId, userMsg);
         product = await ioOnProductFound(socketId);
-        console.log("product", product?.name);
+        console.log("product found?", product);
+        // نحدد هل البيانات موجودة أصلاً أم لا
+        const isFound = product !== null && product !== undefined;
+        // نرسل الـ JSON كما هو للذكاء ليحلله
+        const rawData = isFound ? JSON.stringify(product) : "NULL (No Data Found)";
         const prompt = `
-  You are a professional Supplier Agent representing a wholesale supplier.
-  **Context: You are communicating via WhatsApp.**
-  **Restriction: Use Saudi dialect only**
-  **Constraint: Keep your response very short, concise, and direct.**
+    You are a professional and polite Customer Support Agent communicating in **Arabic** on **WhatsApp**.
 
-  I have located the following product based on the client's inquiry:
-  ${JSON.stringify(product)}
+    **Input Data (Raw JSON with Unknown Schema):**
+    \`\`\`json
+    ${rawData}
+    \`\`\`
 
-  Your task is to reply to the client in Arabic with a professional, business-oriented tone:
-  1. Confirm that you have located this specific product (Mention the Product Name clearly).
-  2. Ask the client to confirm if this is the exact item they are looking to source or order ("هل هذا هو الصنف المطلوب؟").
-  3. Invite the client to ask about specifications, quantities, availability, or any technical details.
+    **Your Task (Data Analysis & Natural Response):**
+    1. **Analyze the JSON:** Identify the keys for Name, Price, Barcode, and Quantity.
+    2. **Determine Availability:**
+       - If Quantity > 0: Status is "Available".
+       - If Quantity <= 0 or missing: Status is "Out of Stock".
 
-  Avoid flowery sales language; be precise and direct.
+    3. **Construct the Reply (Strict Formatting Rules):**
+       - **NO Emojis:** Do not use any emojis (e.g., 🛑, ✅, 🙏).
+       - **NO Markdown/Formatting:** Do not use asterisks (*), underscores (_), bold, or italics. Do not use quotation marks around the message.
+       - **Style:** Simple, polite, direct, and professional plain text.
+
+       **Scenarios:**
+
+       * **Scenario A: Product Found & Available:**
+           - Greeting.
+           - State that the product [Name] is available.
+           - Mention the price [Price].
+           - Ask if they want to proceed.
+           - *Target Example:* "أهلا بك. المنتج [Name] متوفر وسعره [Price] ريال. هل ترغب بإضافته للطلب؟"
+
+       * **Scenario B: Product Found BUT Out of Stock:**
+           - Polite apology.
+           - State clearly that [Name] is currently unavailable.
+           - Offer to check for alternatives.
+           - *Target Example:* "نعتذر منك. المنتج [Name] غير متوفر حاليا في المخزون. هل ترغب بالبحث عن بديل مشابه؟"
+
+       * **Scenario C: Product NOT Found (NULL):**
+           - Polite apology regarding missing data in the system.
+           - Ask for a Barcode image or to check the name.
+           - *Target Example:* "عذرا منك، لا توجد بيانات لهذا المنتج في النظام. يرجى تزويدنا بصورة الباركود أو التأكد من الاسم لنتمكن من خدمتك."
+
+    **Important:** Output the final Arabic response ONLY. Do not add any explanations.
     `;
         const aiMsg = await geminiModel.SendMessage({
             prompt: prompt,
@@ -128,6 +157,10 @@ ${userMsg}
     State exactly "متوفر" (Available).
 
   Response Tone: Professional, concise, and in Arabic.
+
+  **Construct the Reply (Strict Formatting Rules):**
+   - **NO Emojis:** Do not use any emojis (e.g., 🛑, ✅, 🙏).
+   - **NO Markdown/Formatting:** Do not use asterisks (*), underscores (_), bold, or italics. Do not use quotation marks around the message.
     `;
         const aiMsg = await geminiModel.SendMessage({
             prompt: prompt,
@@ -165,6 +198,10 @@ ${userMsg}
     2. Do NOT invent information. If the answer (e.g., specific shipping price to a city not listed) is not in the data, apologize and say you need to check with administration.
     3. Be concise and direct. Do not write long paragraphs unless necessary.
     4. Reply in Arabic.
+
+    **Construct the Reply (Strict Formatting Rules):**
+     - **NO Emojis:** Do not use any emojis (e.g., 🛑, ✅, 🙏).
+     - **NO Markdown/Formatting:** Do not use asterisks (*), underscores (_), bold, or italics. Do not use quotation marks around the message.
     `;
         const aiMsg = await geminiModel.SendMessage({
             prompt: prompt,
@@ -202,6 +239,10 @@ ${userMsg}
      - Example format: "تمام، طلبك هو 5 لفات. السعر الإجمالي بيكون 500 ريال. أعتمد الطلب؟"
 
   Constraint: Be concise.
+
+  **Construct the Reply (Strict Formatting Rules):**
+   - **NO Emojis:** Do not use any emojis (e.g., 🛑, ✅, 🙏).
+   - **NO Markdown/Formatting:** Do not use asterisks (*), underscores (_), bold, or italics. Do not use quotation marks around the message.
     `;
         const aiMsg = await geminiModel.SendMessage({
             prompt: prompt,
@@ -217,35 +258,111 @@ ${userMsg}
     // ============================================================
     // 4. دالة تأكيد الطلب (Order Confirmation)
     // ============================================================
-    static async OrderConfirmation(userMsg, preChat, product, apiKey) {
+    static async OrderConfirmation(userMsg, preChat, product, apiKey, customerPhone) {
         console.log("Processing Order Confirmation");
-        // ملاحظة: نعتمد على الـ preChat ليعرف الذكاء الاصطناعي السعر والكمية التي تم ذكرها في الرسالة السابقة
+        const productDataString = JSON.stringify(product, null, 2);
         const prompt = `
-  You are a Sales Agent. The user is replying to your order summary (Confirmation Stage).
-  **Context: You are communicating via WhatsApp.**
-  **Restriction: Use Saudi dialect only**
-  **Constraint: Keep your response very short, concise, and direct.**
-  
-  User's Reply: "${userMsg}"
+    You are a Sales Agent. The user is replying to your order summary (Confirmation Stage).
+    **Context: You are communicating via WhatsApp.**
 
-  Instructions:
-  1. **Analyze Sentiment:** Is the user saying "Yes/Confirm" or "No/Cancel"?
-  2. **If YES:** - Reply with a success message in Arabic.
-     - Reply politely acknowledging the cancellation.
-     - Say "تمام ب إذن الله راح نوصلها لك في اقرب وقت".
-  3. **If NO:**
-     - Reply politely acknowledging the Confirmation.
-     - Say "تمام تحتاج شي ثاني؟".
+    **Customer Phone:** ${customerPhone}  <-- Phone Number injected here
+    **Product Data:**
+    ${productDataString}
 
-  Constraint: Very short and professional Arabic response.
+    **Goal:** Analyze the user's reply and generate a JSON response.
+
+    User's Reply: "${userMsg}"
+
+    **Instructions:**
+    1. Analyze Sentiment (Confirm vs Cancel).
+    2. Output ONLY Valid JSON with these keys:
+       {
+         "status": "CONFIRMED" or "CANCELLED",
+         "useraimsg": "String (Saudi Dialect for customer)",
+         "workeraimsg": "String (Report for worker including Phone Number & Product Details)"
+       }
+
+    3. **Content Logic:**
+      **Construct the Reply (Strict Formatting Rules):**
+       - **NO Emojis:** Do not use any emojis (e.g., 🛑, ✅, 🙏).
+       - **NO Markdown/Formatting:** Do not use asterisks (*), underscores (_), bold, or italics. Do not use quotation marks around the message.
+       - **If CONFIRMED:**
+         - useraimsg: "تمام بإذن الله راح نوصلها لك في أقرب وقت، شكراً لثقتك "
+         - workeraimsg: " *طلب جديد مؤكد* \n\nالعميل وافق على الطلب.\n📱 *رقم العميل:* ${customerPhone}\n\n*تفاصيل المنتج:*\n(Extract key details from the Product JSON above)."
+
+       - **If CANCELLED:**
+         - useraimsg: "تمام، حصل خير. تامرنا على شيء ثاني؟"
+         - workeraimsg: null (No worker message needed)
+
+    **Constraint:** Return ONLY raw JSON. No markdown formatting.
+    
     `;
-        const aiMsg = await geminiModel.SendMessage({
+        let aiRawMsg = await geminiModel.SendMessage({
             prompt: prompt,
             history: preChat,
             apiKey,
         });
+        aiRawMsg = aiRawMsg.replace(/```json|```/g, "").trim();
+        let parsedResponse;
+        parsedResponse = JSON.parse(aiRawMsg);
         return {
-            msg: aiMsg,
+            status: parsedResponse.status,
+            msg: parsedResponse.useraimsg,
+            workeraimsg: parsedResponse.workeraimsg, // الان الرسالة تحتوي على رقم الجوال جاهزة
+            product: product,
+            prompt,
+        };
+    }
+    static async TransferToWorker(userMsg, preChat, product, clientPhoneNumber, // <--- رقم العميل هنا
+    apiKey) {
+        console.log("Escalating to Worker...");
+        const prompt = `
+    You are a Customer Support Supervisor.
+    **Context:** The AI bot failed to assist the client, or the client requested a human.
+    **Goal:** Generate a JSON response to handle this handover smoothly.
+
+    **Client Info:**
+    - Message: "${userMsg}"
+    - Phone: "${clientPhoneNumber}"
+
+    **Instructions:**
+    1. **useraimsg:** Write a polite, apologetic message in **Saudi Dialect** telling the user that a colleague will contact them shortly on their number (${clientPhoneNumber}).
+    2. **workeraimsg:** Write a clear alert message for the Staff/Worker summarizing what the client wants and stating "Please contact this client immediately".
+
+    **Construct the Reply (Strict Formatting Rules):**
+     - **NO Emojis:** Do not use any emojis (e.g., 🛑, ✅, 🙏).
+     - **NO Markdown/Formatting:** Do not use asterisks (*), underscores (_), bold, or italics. Do not use quotation marks around the message.
+
+    **Output Format (Valid JSON ONLY):**
+    {
+      "status": "ESCALATED",
+      "useraimsg": "String (Saudi Arabic message to client)",
+      "workeraimsg": "String (Alert details for the worker)"
+    }
+    `;
+        let aiRawMsg = await geminiModel.SendMessage({
+            prompt: prompt,
+            history: preChat,
+            apiKey,
+        });
+        aiRawMsg = aiRawMsg.replace(/```json|```/g, "").trim();
+        let parsedResponse;
+        try {
+            parsedResponse = JSON.parse(aiRawMsg);
+        }
+        catch (e) {
+            console.error("Failed to parse AI response in TransferToWorker", aiRawMsg);
+            // Fallback في حال فشل الذكاء الاصطناعي في صياغة الـ JSON
+            parsedResponse = {
+                status: "ESCALATED",
+                useraimsg: `ولا يهمك، تم استلام طلبك وراح يتواصل معك أحد الموظفين قريباً على الرقم ${clientPhoneNumber}.`,
+                workeraimsg: `⚠️ تنبيه: العميل يطلب التحدث مع موظف. \nالرسالة: ${userMsg}\nالرقم: ${clientPhoneNumber}`,
+            };
+        }
+        return {
+            status: parsedResponse.status, // حالة الطلب (ESCALATED)
+            msg: parsedResponse.useraimsg, // رسالة العميل (راح يتواصل معاك الموظف...)
+            workeraimsg: parsedResponse.workeraimsg, // رسالة الموظف (تنبيه للاتصال)
             product: product,
             prompt,
         };

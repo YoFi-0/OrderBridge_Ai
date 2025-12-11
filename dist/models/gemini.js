@@ -8,7 +8,6 @@ class GeminiModel {
         const openRouter = new OpenRouter({
             apiKey: apiKey,
         });
-        console.log("history", history, "parts", history?.map((x) => x.parts));
         // 2. تحويل الـ History من تنسيق Google Gemini إلى تنسيق OpenRouter/OpenAI
         // هذا الجزء ضروري لأن OpenRouter يتوقع هيكلية مختلفة قليلاً
         const convertedHistory = (history || []).map((msg) => {

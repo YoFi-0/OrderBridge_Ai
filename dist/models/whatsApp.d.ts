@@ -26,6 +26,7 @@ interface WhatsAppMessagePayload {
 declare class WhatsApp {
     SendMsg(payload: WhatsAppMessagePayload, token: string, phoneNumberId: string): Promise<void>;
     GetWebHook(req: Request, res: Response): Promise<void>;
+    SendToWorkers(obj: WhatsApp, workersList: string[], token: string, phoneNumberId: string, msg: string): Promise<void>;
     PostWebHook(obj: WhatsApp, req: Request, res: Response): Promise<void>;
 }
 export declare const whatsApp: WhatsApp;

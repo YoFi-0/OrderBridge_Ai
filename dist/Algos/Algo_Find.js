@@ -77,6 +77,9 @@ console.log("⚙️  جاري بناء فهرس BM25 اليدوي...");
 const searchCorpus = mockProducts.map(prepareSearchContext);
 const bm25Engine = new BM25(searchCorpus);
 console.log("✅ تم الفهرسة! النظام جاهز (بدون مكتبات خارجية).");
+export const sleep = (dlay) => {
+    return new Promise((resolve) => setTimeout(resolve, dlay));
+};
 // --- 3. دالة البحث الرئيسية ---
 export const SearchProductByUserMsg = async (userMsg) => {
     console.log(`\n🔍 Customer Ask About: "${userMsg}"`);

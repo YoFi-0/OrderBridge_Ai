@@ -5,7 +5,7 @@ interface ClassificationData {
     note: string;
     userMsg: string;
 }
-type ClassificationType = "question_about_previous_product" | "question_about_new_product" | "global_questions" | "order_question" | "order_confirmation";
+type ClassificationType = "question_about_previous_product" | "question_about_new_product" | "global_questions" | "order_question" | "order_confirmation" | "transfer_to_worker";
 declare class Classification {
     static Search(userMsg: string, preChat: ChatMessage[], apiKey: string): Promise<ClassificationData>;
     static QustionAboutNewProduct(userMsg: string, preChat: ChatMessage[], socketId: string, apiKey: string): Promise<{
@@ -29,9 +29,19 @@ declare class Classification {
         product: Product;
         prompt: string;
     }>;
-    static OrderConfirmation(userMsg: string, preChat: ChatMessage[], product: Product, apiKey: string): Promise<{
-        msg: string;
-        product: Product;
+    static OrderConfirmation(userMsg: string, preChat: ChatMessage[], product: any, apiKey: string, customerPhone: string): Promise<{
+        status: any;
+        msg: any;
+        workeraimsg: any;
+        product: any;
+        prompt: string;
+    }>;
+    static TransferToWorker(userMsg: string, preChat: ChatMessage[], product: any, clientPhoneNumber: string, // <--- رقم العميل هنا
+    apiKey: string): Promise<{
+        status: any;
+        msg: any;
+        workeraimsg: any;
+        product: any;
         prompt: string;
     }>;
 }
