@@ -2,7 +2,7 @@ import { OpenRouter } from "@openrouter/sdk";
 import dotenv from "dotenv";
 dotenv.config();
 class GeminiModel {
-    modelName = "google/gemini-3-pro-preview";
+    modelName = "openai/gpt-4o-mini";
     async SendMessage({ prompt, image, history, apiKey, }) {
         // 1. إعداد OpenRouter باستخدام المفتاح الممرر
         const openRouter = new OpenRouter({

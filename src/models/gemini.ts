@@ -16,7 +16,7 @@ export interface ChatMessage {
 }
 
 class GeminiModel {
-    private modelName = "google/gemini-3-pro-preview";
+    private modelName = "openai/gpt-4o-mini";
 
     public async SendMessage({
         prompt,

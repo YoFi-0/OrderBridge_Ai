@@ -188,6 +188,7 @@ class WhatsApp {
                     ? userRecord.chat
                     : [];
                 const currentProduct: Product | undefined = userRecord?.product;
+                const hasActiveProduct = !!currentProduct;
 
                 let aiMsg = null;
 
@@ -195,7 +196,9 @@ class WhatsApp {
                     incomingText,
                     currentChat,
                     tempSocketData.openRouterKey,
+                    hasActiveProduct,
                 );
+                console.log("classification", classification.category);
 
                 // 4. التوجيه
                 if (
@@ -208,13 +211,15 @@ class WhatsApp {
                             currentProduct!,
                             tempSocketData.openRouterKey,
                         );
+                    } else {
+                        aiMsg =
+                            await Classification.QuestionAboutPreviousProduct(
+                                incomingText,
+                                currentChat,
+                                currentProduct!,
+                                tempSocketData.openRouterKey,
+                            );
                     }
-                    aiMsg = await Classification.QuestionAboutPreviousProduct(
-                        incomingText,
-                        currentChat,
-                        currentProduct!,
-                        tempSocketData.openRouterKey,
-                    );
                 } else if (
                     classification.category == "question_about_new_product"
                 ) {
@@ -263,13 +268,15 @@ class WhatsApp {
                             tempSocketData.openRouterKey,
                             from,
                         );
-                        obj.SendToWorkers(
-                            obj,
-                            tempSocketData.workersPhoneNumbers,
-                            tempSocketData.whatsAppKey,
-                            tempSocketData.whatsAppPhoneNumberId,
-                            aiMsg.workeraimsg,
-                        );
+                        if (aiMsg.workeraimsg) {
+                            obj.SendToWorkers(
+                                obj,
+                                tempSocketData.workersPhoneNumbers,
+                                tempSocketData.whatsAppKey,
+                                tempSocketData.whatsAppPhoneNumberId,
+                                aiMsg.workeraimsg,
+                            );
+                        }
                     }
                 } else if (classification.category == "transfer_to_worker") {
                     aiMsg = await Classification.TransferToWorker(

@@ -1,348 +1,255 @@
 import { getCompanyInfo } from "../company/companyData.js";
 import { ioOnProductFound, ioSearch } from "../http/index.js";
-import { geminiModel } from "../models/gemini.js";
-import { SearchProductByUserMsg } from "./Algo_Find.js";
+import { geminiModel } from "../models/gemini.js"; // تأكد أن الموديل هنا هو gpt-4o-mini
 class Classification {
-    static async Search(userMsg, preChat, apiKey) {
+    // 🔥 التعديل 1: إضافة hasActiveProduct لمعرفة هل يوجد منتج في السياق
+    static async Search(userMsg, preChat, apiKey, hasActiveProduct) {
+        // تحويل المحادثة السابقة لنص مقروء
+        const historyText = preChat
+            .slice(-4) // نأخذ آخر 4 رسائل لزيادة الدقة
+            .map((m) => `${m.role === "user" ? "العميل" : "البوت"}: ${m.parts[0]?.text || ""}`)
+            .join("\n");
         const prompt = `
 # Role
-You are an intelligent intent classifier for a Supplier Agent. Your job is to categorize the user's message into one of FIVE categories based on their business intent.
+You are a smart Saudi Warehouse Agent (Hejazi Dialect) for a Wallpaper Supplier.
+Your ONLY job is to classify the User's Intent based on the context.
 
-# Categories
+# Current Context State
+**Is User Holding a Product?** ${hasActiveProduct ? "YES (Focus on this product)" : "NO (No product selected)"}
 
-1. "question_about_previous_product"
-   - TRIGGER: User asks for INFORMATION about the current product (specs, stock, price, material).
-   - EXCLUSION: If the user says "I want X pieces" or "Give me X", do NOT use this. Use 'order_question' instead.
-   - KEYWORDS: "MOQ", "Price?", "Is it available?", "How many do you have?", "Specs", "Size".
+# Categories & Strict Rules
 
-2. "question_about_new_product"
-   - TRIGGER: User wants to find/source a DIFFERENT product.
-   - KEYWORDS: "Find me...", "Do you have...", "Search for...", "I need a supplier for...", "numbers", "product code".
+1. **"question_about_previous_product"**
+   - TRIGGER: User asks about price, specs, size, or availability of the *currently selected product*.
+   - **CRITICAL CONDITION:** Only use this if "Is User Holding a Product?" is **YES**.
+   - EXAMPLES: "بكم هذا؟", "كم مقاسه؟", "متوفر منه؟", "طيب ينفع للمطبخ؟".
 
-3. "global_questions"
-   - TRIGGER: General questions about services, shipping, payment, location.
-   - KEYWORDS: "Commission", "Payment terms", "Where is your office?", "Shipping cost".
+2. **"question_about_new_product"**
+   - TRIGGER: User sends a Product Code, Image, or asks "Do you have [Specific Type/Code]?".
+   - **CRITICAL:** Use this if user switches topic to a NEW item.
+   - EXAMPLES: "عندكم كود 505؟", "ابغى ورق مشجر", "فيه لون رمادي؟", (User sends Image).
 
-4. "order_question"
-   - TRIGGER: User expresses a CLEAR INTENT TO BUY or specifies a quantity they want to take/receive.
-   - CONTEXT: Moving from "asking" to "acting/buying".
-   - KEYWORDS: "Give me 2", "I want 5 rolls", "Book 10 for me", "Send me 3", "اعطيني 2", "ابغى 5", "احجز لي", "خلاص ابغاها".
+3. **"global_questions"**
+   - TRIGGER: Greetings, General location/shipping questions, or generic phrases.
+   - **TRAP:** "عندكم ورق جدران؟" (Generic) -> Global. BUT "عندكم ورق جدران مودرن؟" (Specific) -> New Product.
+   - EXAMPLES: "سلام عليكم", "وين موقعكم", "كيف التوصيل", "وش تبيعون؟".
 
-5. "order_confirmation"
-   - TRIGGER: User confirms the final deal after being told the total price.
-   - KEYWORDS: "Confirm", "Deal", "Go ahead", "Transfer info", "اعتمد", "تم", "تمام توكلنا على الله".
+4. **"order_question"**
+   - TRIGGER: User shows INTENT TO BUY specific quantity.
+   - KEYWORDS: "ابغى 5 حبات", "احجز لي", "بكم الـ 10 رولات؟".
 
-# Output Format
-Respond with a strictly valid JSON object:
-- "category": One of the exact strings above.
-- "note": A concise summary.
+5. **"order_confirmation"**
+   - TRIGGER: User accepts the deal OR agrees to the invoice.
+   - **CRITICAL KEYWORDS:** "اي", "ايه", "نعم", "تم", "اعتمد", "توكلنا", "يلا", "Yes", "Ok".
+   - **LOGIC:** If the PREVIOUS BOT MESSAGE was asking for confirmation (e.g., "نعتمد؟"), and user says "اي" -> IT IS CONFIRMATION.
 
-# Examples
+6. **"transfer_to_worker"**
+   - TRIGGER: User is angry, confused, or asks for human.
+   - KEYWORDS: "كلمني انت", "ما افهم عليك", "ناد الموظف", "يا هووه".
 
-Input: "كم حبة باقي عندكم؟"
-Output: {"category": "question_about_previous_product", "note": "User checking stock availability only."}
+# Few-Shot Examples (Follow Logic)
 
-Input: "تمام، اعطيني منها 2"
-Output: {"category": "order_question", "note": "User explicitly wants to buy 2 units."}
+Input (No Product): "عندكم ورق جدران؟"
+Output: {"category": "global_questions", "note": "General inquiry"}
 
-Input: "ابغى 5 كراتين لو سمحت"
-Output: {"category": "order_question", "note": "User requesting a specific quantity to purchase."}
+Input (No Product): "ابغى موديل 9090"
+Output: {"category": "question_about_new_product", "note": "Searching specific code"}
 
-Input: "اعتمد الطلب"
-Output: {"category": "order_confirmation", "note": "User confirming the order."}
+Input (Has Product): "بكم المتر؟"
+Output: {"category": "question_about_previous_product", "note": "Context implies current product"}
 
-#client message
-${userMsg}
+Input (Has Product): "طيب وريني شي ثاني"
+Output: {"category": "question_about_new_product", "note": "Switching intent"}
+
+# User Message
+"${userMsg}"
+
+# Output
+Return ONLY strict JSON.
     `;
-        const last3Msgs = preChat.slice(-3);
-        const dataStr = await geminiModel.SendMessage({
-            prompt: prompt,
-            history: last3Msgs,
-            apiKey,
-        });
-        const cleanedStr = dataStr.replace(/```json|```/g, "").trim();
-        const data = JSON.parse(cleanedStr);
-        return {
-            category: data.category,
-            note: data.note,
-            userMsg: userMsg,
-        };
+        try {
+            // نفترض هنا أن geminiModel يستدعي gpt-4o-mini داخلياً
+            const dataStr = await geminiModel.SendMessage({
+                prompt: prompt,
+                history: [], // الهيستوري مدمج في البرومبت لضمان التنسيق
+                apiKey,
+            });
+            const cleanedStr = dataStr.replace(/```json|```/g, "").trim();
+            const data = JSON.parse(cleanedStr);
+            return {
+                category: data.category,
+                note: data.note || "",
+                userMsg: userMsg,
+            };
+        }
+        catch (error) {
+            console.error("❌ Classification Failed:", error);
+            // Fallback آمن
+            return {
+                category: "global_questions",
+                note: "Fallback Error",
+                userMsg: userMsg,
+            };
+        }
     }
+    // --- دوال المعالجة (Handlers) ---
     static async QustionAboutNewProduct(userMsg, preChat, socketId, apiKey) {
         let product = null;
+        // محاكاة البحث (تأكد أن السوكيت يعمل بشكل صحيح)
         ioSearch(socketId, userMsg);
         product = await ioOnProductFound(socketId);
-        console.log("product found?", product);
-        // نحدد هل البيانات موجودة أصلاً أم لا
-        const isFound = product !== null && product !== undefined;
-        // نرسل الـ JSON كما هو للذكاء ليحلله
-        const rawData = isFound ? JSON.stringify(product) : "NULL (No Data Found)";
+        const isFound = product && product !== null;
+        const rawData = isFound ? JSON.stringify(product) : "NULL";
         const prompt = `
-    You are a professional and polite Customer Support Agent communicating in **Arabic** on **WhatsApp**.
+    You are a polite Saudi Salesman (Hejazi Dialect).
+    User searched for: "${userMsg}"
 
-    **Input Data (Raw JSON with Unknown Schema):**
-    \`\`\`json
+    **Database Result:**
     ${rawData}
-    \`\`\`
 
-    **Your Task (Data Analysis & Natural Response):**
-    1. **Analyze the JSON:** Identify the keys for Name, Price, Barcode, and Quantity.
-    2. **Determine Availability:**
-       - If Quantity > 0: Status is "Available".
-       - If Quantity <= 0 or missing: Status is "Out of Stock".
+    **Instruction:**
+    1. **If Found (Quantity > 0):** Say: "يا هلا، الموديل [Name] موجود طال عمرك. السعر [Price] ريال. كم حبة تحتاج؟"
+    2. **If Found (Quantity = 0):** Say: "المعذرة يا غالي، الموديل [Name] مخلص حالياً. تحب نشوف لك شي مشابه؟"
+    3. **If NOT Found (NULL):** Say: "المعذرة منك، هذا الكود مو طالع عندي بالنظام. ممكن تتأكد من الرقم أو ترسل صورة الباركود؟"
 
-    3. **Construct the Reply (Strict Formatting Rules):**
-       - **NO Emojis:** Do not use any emojis (e.g., 🛑, ✅, 🙏).
-       - **NO Markdown/Formatting:** Do not use asterisks (*), underscores (_), bold, or italics. Do not use quotation marks around the message.
-       - **Style:** Simple, polite, direct, and professional plain text.
-
-       **Scenarios:**
-
-       * **Scenario A: Product Found & Available:**
-           - Greeting.
-           - State that the product [Name] is available.
-           - Mention the price [Price].
-           - Ask if they want to proceed.
-           - *Target Example:* "أهلا بك. المنتج [Name] متوفر وسعره [Price] ريال. هل ترغب بإضافته للطلب؟"
-
-       * **Scenario B: Product Found BUT Out of Stock:**
-           - Polite apology.
-           - State clearly that [Name] is currently unavailable.
-           - Offer to check for alternatives.
-           - *Target Example:* "نعتذر منك. المنتج [Name] غير متوفر حاليا في المخزون. هل ترغب بالبحث عن بديل مشابه؟"
-
-       * **Scenario C: Product NOT Found (NULL):**
-           - Polite apology regarding missing data in the system.
-           - Ask for a Barcode image or to check the name.
-           - *Target Example:* "عذرا منك، لا توجد بيانات لهذا المنتج في النظام. يرجى تزويدنا بصورة الباركود أو التأكد من الاسم لنتمكن من خدمتك."
-
-    **Important:** Output the final Arabic response ONLY. Do not add any explanations.
+    **Rule:** Be concise. No English. Use "يا هلا", "طال عمرك".
     `;
         const aiMsg = await geminiModel.SendMessage({
             prompt: prompt,
-            history: preChat,
+            history: [], // لا نحتاج هيستوري طويل هنا، الرد فوري
             apiKey,
         });
-        return {
-            msg: aiMsg,
-            product: product,
-            prompt,
-        };
+        return { msg: aiMsg, product: product, prompt };
     }
     static async QuestionAboutPreviousProduct(userMsg, preChat, product, apiKey) {
-        console.log("product", product?.name);
         const prompt = `
-  You are a professional Supplier Agent.
-  **Context: You are communicating via WhatsApp.**
-  **Restriction: Use Saudi dialect only**
-  **Constraint: Keep your response very short, concise, and direct.**
-  
-  You are currently discussing the following product details with a client:
-  ${JSON.stringify(product)}
+    You are a Saudi Salesman (Hejazi Dialect).
+    **Product Context:** ${JSON.stringify(product)}
+    **User Question:** "${userMsg}"
 
-  The client's latest inquiry is: "${userMsg}"
+    **Instructions:**
+    1. If user asks about **Material/Origin/Shape** ("من ايش؟", "صناعة وين؟", "كيف شكله؟"):
+       - Answer based purely on the JSON details (description, material, origin).
+       - DO NOT mention quantity or stock here.
 
-  Your instructions:
-  1. **Answer the specific question:** Answer strictly based on the provided product data. If the info is not there, say you don't know.
-  2. **Standard Specs:** If the client asks for details/specs generally, provide:
-     - Length & Width (الطول والعرض).
-     - Area/Coverage (المساحة).
-     - Price (السعر).
-  3. **Availability Logic (CRITICAL):**
-     - Check the 'specific question' The client's latest inquiry .
-      - If the user asks for how many pieces are available,
-      State exactly "متوفر" (Available).
-      then
-     - Check the 'quantity' value in the product data.
-    State exactly "متوفر" (Available).
+    2. If user asks about **Availability** ("متوفر؟", "باقي منه؟"):
+       - ONLY THEN check quantity.
 
-  Response Tone: Professional, concise, and in Arabic.
-
-  **Construct the Reply (Strict Formatting Rules):**
-   - **NO Emojis:** Do not use any emojis (e.g., 🛑, ✅, 🙏).
-   - **NO Markdown/Formatting:** Do not use asterisks (*), underscores (_), bold, or italics. Do not use quotation marks around the message.
+    3. Keep it friendly and short.
     `;
         const aiMsg = await geminiModel.SendMessage({
             prompt: prompt,
-            history: preChat,
+            history: preChat.slice(-2), // هيستوري قصير للتركيز
             apiKey,
         });
-        return {
-            msg: aiMsg,
-            product: product,
-            prompt,
-        };
+        return { msg: aiMsg, product: product, prompt };
     }
-    static async GlobalQuestions(userMsg, preChat, product, // يمكننا إبقاء المنتج في السياق لو سأل العميل "هل تشحنون هذا المنتج للرياض؟"
-    apiKey) {
-        console.log("product", product?.name);
-        // 1. جلب بيانات الشركة (JSON)
-        // استبدل getCompanyInfo بالدالة الفعلية الموجودة لديك
+    static async GlobalQuestions(userMsg, preChat, product, apiKey) {
         const companyData = await getCompanyInfo();
         const prompt = `
-    You are a professional Supplier Agent.
-    **Context: You are communicating via WhatsApp.**
-    **Restriction: Use Saudi dialect only**
-    **Constraint: Keep your response very short, concise, and direct.**
+    You are a Saudi Customer Support agent.
+    **Company Info:** ${JSON.stringify(companyData)}
+    **User Input:** "${userMsg}"
 
-    Here is the official Company Information (Truth Source):
-    ${JSON.stringify(companyData)}
-    
-    You are currently discussing the following product details with a client:
-    ${JSON.stringify(product)}
-
-    The client asks: "${userMsg}"
-
-    Instructions:
-    1. Answer the specific question using ONLY the provided Company Information.
-    2. Do NOT invent information. If the answer (e.g., specific shipping price to a city not listed) is not in the data, apologize and say you need to check with administration.
-    3. Be concise and direct. Do not write long paragraphs unless necessary.
-    4. Reply in Arabic.
-
-    **Construct the Reply (Strict Formatting Rules):**
-     - **NO Emojis:** Do not use any emojis (e.g., 🛑, ✅, 🙏).
-     - **NO Markdown/Formatting:** Do not use asterisks (*), underscores (_), bold, or italics. Do not use quotation marks around the message.
+    **Task:**
+    - If greeting: Reply nicely ("يا هلا وسهلا، آمرني").
+    - If generic "Do you have wallpaper?": Say "اي نعم عندنا تشكيلة واسعة، ارسل لي كود المنتج أو صورته وابشر".
+    - If asking location/hours: Use Company Info.
+    - Keep it short.
     `;
         const aiMsg = await geminiModel.SendMessage({
             prompt: prompt,
-            history: preChat,
+            history: preChat.slice(-2),
             apiKey,
         });
-        return {
-            msg: aiMsg,
-            product: product,
-            prompt,
-        };
+        return { msg: aiMsg, product: product, prompt };
     }
     static async OrderQuestion(userMsg, preChat, product, apiKey) {
-        console.log("Processing Order Quantity for:", product?.name);
+        // إرسال البيانات "صندوق أسود" للذكاء
+        const productJson = JSON.stringify(product);
         const prompt = `
-  You are a Sales Agent finalizing a deal.
-  **Context: You are communicating via WhatsApp.**
-  **Restriction: Use Saudi dialect only**
-  **Constraint: Keep your response very short, concise, and direct.**
+    You are a Smart Saudi Sales Assistant (Hejazi Dialect).
 
-  Current Product Data:
-  ${JSON.stringify(product)}
+    **INPUTS:**
+    1. **User Request:** "${userMsg}"
+    2. **Product Data (JSON):** ${productJson}
 
-  User's Request: "${userMsg}"
+    **YOUR TASK:**
+    1. **Find Stock:** Search JSON for 'quantity', 'stock', 'qty'.
+    2. **Find Price:** Search JSON for 'price', 'cost'.
+    3. **Find Name:** Search JSON for 'name', 'title'.
+    4. **Extract User Quantity:** Parse user text to Integer.
 
-  Your Goal:
-  1. **Extract Quantity:** Identify how many items the user wants from their message.
-  2. **Check Availability:** - Compare user's quantity vs product 'quantity' (Stock).
-     - If user asks for MORE than stock, apologize and state the available limit.
-  3. **Calculate Total:** - If stock is sufficient, Calculate: (User Quantity * Product Price).
-  4. **Draft Response (Arabic):**
-     - State the quantity requested.
-     - State the total price clearly (S.R).
-     - Ask for final confirmation to proceed with the invoice/shipping.
-     - Example format: "تمام، طلبك هو 5 لفات. السعر الإجمالي بيكون 500 ريال. أعتمد الطلب؟"
+    **LOGIC:**
+    - IF (User Quantity > Available Stock) -> **REJECT**.
+    - IF (User Quantity <= Available Stock) -> **ACCEPT**.
 
-  Constraint: Be concise.
+    **OUTPUT RULES (Strict Saudi Arabic):**
 
-  **Construct the Reply (Strict Formatting Rules):**
-   - **NO Emojis:** Do not use any emojis (e.g., 🛑, ✅, 🙏).
-   - **NO Markdown/Formatting:** Do not use asterisks (*), underscores (_), bold, or italics. Do not use quotation marks around the message.
+    **Scenario 1: ACCEPTED**
+    - Calculate Total = User Quantity * Price.
+    - Response: "تمام، طلبك [UserQty] حبة من [Name]. الإجمالي: [Total] ريال. نعتمد الفاتورة يا غالي؟"
+
+    **Scenario 2: REJECTED (Not enough stock)**
+    - **CRITICAL:** DO NOT mention the exact remaining stock number.
+    - Response: "المعذرة يا غالي، الكمية هذي مو متوفرة كاملة حالياً.
+      تحب تاخذ عدد أقل ولا تشوف موديل ثاني؟"
+
+    **Constraint:** Return ONLY the final Arabic message.
     `;
         const aiMsg = await geminiModel.SendMessage({
             prompt: prompt,
-            history: preChat,
+            history: preChat.slice(-2),
             apiKey,
         });
-        return {
-            msg: aiMsg,
-            product: product,
-            prompt,
-        };
+        return { msg: aiMsg, product: product, prompt };
     }
-    // ============================================================
-    // 4. دالة تأكيد الطلب (Order Confirmation)
-    // ============================================================
     static async OrderConfirmation(userMsg, preChat, product, apiKey, customerPhone) {
-        console.log("Processing Order Confirmation");
-        const productDataString = JSON.stringify(product, null, 2);
+        // 🔥 1. نرسل الجيسون كما هو "بله" للذكاء بدون ما نلمسه
+        const productDataString = JSON.stringify(product);
+        // نجهز السياق عشان الذكاء يعرف الكمية
+        const historyText = preChat
+            .slice(-3)
+            .map((m) => `${m.role}: ${m.parts[0]?.text}`)
+            .join("\n");
+        // 🔥 2. البرومبت هو "الكل في الكل": يحلل، يحسب، وينسق الرسالة
         const prompt = `
-    You are a Sales Agent. The user is replying to your order summary (Confirmation Stage).
-    **Context: You are communicating via WhatsApp.**
+    You are a Smart Order Manager.
 
-    **Customer Phone:** ${customerPhone}  <-- Phone Number injected here
-    **Product Data:**
-    ${productDataString}
+    **INPUTS:**
+    - User Message: "${userMsg}"
+    - Chat History: \n${historyText}
+    - Product Data (Unknown Structure): ${productDataString}
+    - Client Phone: "${customerPhone}"
 
-    **Goal:** Analyze the user's reply and generate a JSON response.
+    **YOUR MISSION:**
+    1. **Analyze Status:** Did user confirm?
+    2. **Analyze Data:** Dig into the "Product Data" JSON. Find whatever looks like a Name, Price, Code/ID/SKU.
+    3. **Analyze Quantity:** Look at "Chat History" to find the agreed quantity.
+    4. **Calculate:** Total Price = Quantity * Unit Price.
 
-    User's Reply: "${userMsg}"
-
-    **Instructions:**
-    1. Analyze Sentiment (Confirm vs Cancel).
-    2. Output ONLY Valid JSON with these keys:
-       {
-         "status": "CONFIRMED" or "CANCELLED",
-         "useraimsg": "String (Saudi Dialect for customer)",
-         "workeraimsg": "String (Report for worker including Phone Number & Product Details)"
-       }
-
-    3. **Content Logic:**
-      **Construct the Reply (Strict Formatting Rules):**
-       - **NO Emojis:** Do not use any emojis (e.g., 🛑, ✅, 🙏).
-       - **NO Markdown/Formatting:** Do not use asterisks (*), underscores (_), bold, or italics. Do not use quotation marks around the message.
-       - **If CONFIRMED:**
-         - useraimsg: "تمام بإذن الله راح نوصلها لك في أقرب وقت، شكراً لثقتك "
-         - workeraimsg: " *طلب جديد مؤكد* \n\nالعميل وافق على الطلب.\n📱 *رقم العميل:* ${customerPhone}\n\n*تفاصيل المنتج:*\n(Extract key details from the Product JSON above)."
-
-       - **If CANCELLED:**
-         - useraimsg: "تمام، حصل خير. تامرنا على شيء ثاني؟"
-         - workeraimsg: null (No worker message needed)
-
-    **Constraint:** Return ONLY raw JSON. No markdown formatting.
-    
-    `;
-        let aiRawMsg = await geminiModel.SendMessage({
-            prompt: prompt,
-            history: preChat,
-            apiKey,
-        });
-        aiRawMsg = aiRawMsg.replace(/```json|```/g, "").trim();
-        let parsedResponse;
-        parsedResponse = JSON.parse(aiRawMsg);
-        return {
-            status: parsedResponse.status,
-            msg: parsedResponse.useraimsg,
-            workeraimsg: parsedResponse.workeraimsg, // الان الرسالة تحتوي على رقم الجوال جاهزة
-            product: product,
-            prompt,
-        };
-    }
-    static async TransferToWorker(userMsg, preChat, product, clientPhoneNumber, // <--- رقم العميل هنا
-    apiKey) {
-        console.log("Escalating to Worker...");
-        const prompt = `
-    You are a Customer Support Supervisor.
-    **Context:** The AI bot failed to assist the client, or the client requested a human.
-    **Goal:** Generate a JSON response to handle this handover smoothly.
-
-    **Client Info:**
-    - Message: "${userMsg}"
-    - Phone: "${clientPhoneNumber}"
-
-    **Instructions:**
-    1. **useraimsg:** Write a polite, apologetic message in **Saudi Dialect** telling the user that a colleague will contact them shortly on their number (${clientPhoneNumber}).
-    2. **workeraimsg:** Write a clear alert message for the Staff/Worker summarizing what the client wants and stating "Please contact this client immediately".
-
-    **Construct the Reply (Strict Formatting Rules):**
-     - **NO Emojis:** Do not use any emojis (e.g., 🛑, ✅, 🙏).
-     - **NO Markdown/Formatting:** Do not use asterisks (*), underscores (_), bold, or italics. Do not use quotation marks around the message.
-
-    **Output Format (Valid JSON ONLY):**
+    **REQUIRED OUTPUT (JSON ONLY):**
     {
-      "status": "ESCALATED",
-      "useraimsg": "String (Saudi Arabic message to client)",
-      "workeraimsg": "String (Alert details for the worker)"
+      "status": "CONFIRMED" | "CANCELLED",
+
+      "useraimsg": "Write a polite, short Saudi Arabic reply to the user confirming the order.",
+
+      "workeraimsg": "IF CONFIRMED, Write the EXACT Worker Report here. IF CANCELLED, return null."
     }
+
+    **Worker Report Format (Strict Template for workeraimsg):**
+    ✅ *طلب جديد مؤكد*
+    📱 العميل: wa.me/${customerPhone}
+    📦 المنتج: [Insert Product Name Found in JSON]
+    🔢 الكود: [Insert Code/SKU Found in JSON]
+    📝 الكمية المطلوبة: [Insert Quantity Found in History]
+    💰 السعر للمفرد: [Insert Price Found in JSON]
+    💵 الإجمالي المتوقع: [Insert Calculated Total]
+    ⚠️ ملاحظة: [Any details like Color/Size if found]
     `;
         let aiRawMsg = await geminiModel.SendMessage({
             prompt: prompt,
-            history: preChat,
+            history: [], // الهيستوري مدمج في البرومبت
             apiKey,
         });
         aiRawMsg = aiRawMsg.replace(/```json|```/g, "").trim();
@@ -351,42 +258,31 @@ ${userMsg}
             parsedResponse = JSON.parse(aiRawMsg);
         }
         catch (e) {
-            console.error("Failed to parse AI response in TransferToWorker", aiRawMsg);
-            // Fallback في حال فشل الذكاء الاصطناعي في صياغة الـ JSON
+            // Fallback بسيط جداً في حال فشل الجيسون
             parsedResponse = {
-                status: "ESCALATED",
-                useraimsg: `ولا يهمك، تم استلام طلبك وراح يتواصل معك أحد الموظفين قريباً على الرقم ${clientPhoneNumber}.`,
-                workeraimsg: `⚠️ تنبيه: العميل يطلب التحدث مع موظف. \nالرسالة: ${userMsg}\nالرقم: ${clientPhoneNumber}`,
+                status: "CONFIRMED",
+                useraimsg: "أبشر، تم اعتماد طلبك.",
+                workeraimsg: `✅ طلب جديد\nالعميل: ${customerPhone}\nالبيانات: ${productDataString}`,
             };
         }
         return {
-            status: parsedResponse.status, // حالة الطلب (ESCALATED)
-            msg: parsedResponse.useraimsg, // رسالة العميل (راح يتواصل معاك الموظف...)
-            workeraimsg: parsedResponse.workeraimsg, // رسالة الموظف (تنبيه للاتصال)
+            status: parsedResponse.status,
+            msg: parsedResponse.useraimsg,
+            workeraimsg: parsedResponse.workeraimsg, // 👈 الرسالة جاية جاهزة من الذكاء
             product: product,
             prompt,
         };
     }
+    static async TransferToWorker(userMsg, preChat, product, clientPhoneNumber, apiKey) {
+        // منطق التحويل للموظف (كما هو لكن مع التأكد من اللهجة)
+        return {
+            status: "ESCALATED",
+            msg: "ولا يهمك، ثواني وزميلي الموظف بيتواصل معاك يخدمك بعيونه.",
+            workeraimsg: `🚨 طلب تدخل بشري\nالعميل: ${clientPhoneNumber}\nالسبب: ${userMsg}`,
+            product: product,
+            prompt: "Static Transfer",
+        };
+    }
 }
 export default Classification;
-/*
-  تحدد انواع تصانيف أسأال الزبائن
-  -- qustion about previos product
-  1. أسئلة عن المنتج
-    - هل المنتج متوفر
-    - كم سعر المنتج
-    - كم مساحة المنتج او كم طول و عرض المنتج
-  --> راح يبحث في المنتج اللي اترسل قبل كده
-  --
-  qustion about new product
-  1. أستعلام عن منتج جديد
-  2. استعلام عن منتج مشابه
-  --> راح سشغل فنكشن البحث عن منتج
- -- global qustions
- 2. أسئلة عن الشحن
-   - هل توصلون المنتج
-   - كم تكلفة الشحن
-   - كم وقت الشحن
-  --> راح ياخذ بيانات عن وكالة الشحن و يجاوب العميل على قد سؤاله
-*/
 //# sourceMappingURL=classAlgo.js.map
