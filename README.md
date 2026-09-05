@@ -11,7 +11,7 @@ The system is built on a highly decoupled, real-time architecture:
 2. **AI Processing Engine:** Forwards the message context to Google Gemini (`src/models/gemini.ts`) to analyze the request and determine the exact user intent.
 3. **Action Router:** Based on the AI's response, the algorithm (`src/Algos/Algo_Find.ts`) triggers the appropriate action.
 4. **WebSocket Communication:** Uses WebSockets (`src/Algos/classAlgo.ts`) to request specific product data or send order details to the Local Data Client residing securely on the supplier's local network.
-5. **Database Logging:** Logs chat history and client configurations using MongoDB/Mongoose (`src/DB/chatModel.ts` & `src/DB/clientModel.ts`).
+5. **Database Management:** Handles relational data persistence (chat history and client configurations) using **Sequelize ORM** (`src/DB/chatModel.ts` & `src/DB/clientModel.ts`).
 
 ## Key Features
 The server is equipped with a dynamic routing system capable of handling the following core B2B operations:
