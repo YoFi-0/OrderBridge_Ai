@@ -31,7 +31,6 @@ The server is equipped with a dynamic routing system capable of handling the fol
 
 ### Prerequisites
 * Node.js (v16 or higher)
-* MongoDB (for storing chat models and client configurations)
 * TypeScript installed globally (optional, for development)
 
 ### Setup
