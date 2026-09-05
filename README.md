@@ -37,5 +37,5 @@ The server is equipped with a dynamic routing system capable of handling the fol
 ### Setup
 1. Clone the repository:
    ```bash
-   git clone [https://github.com/YoFi-0/hendai_last_v.git](https://github.com/YoFi-0/hendai_last_v.git)
-   cd hendai_last_v
+   git clone [https://github.com/YoFi-0/OrderBridge_Ai.git](https://github.com/YoFi-0/OrderBridge_Ai.git)
+   cd OrderBridge_Ai
