@@ -43,4 +43,4 @@ The server is equipped with a dynamic routing system capable of handling the fol
    yrarn
 1. run:
    ```bash
-   yarn start
+   yarn dev
