@@ -3,7 +3,7 @@
 ## Introduction
 The **OrderBridge Server** is the intelligent core of a B2B communication system designed to bridge the gap between suppliers and retail companies via WhatsApp. Built with TypeScript, this server utilizes AI (Google Gemini) to process natural language inquiries from retailers, classify their intents, and seamlessly route commands to a secure local client connected to the supplier's database. 
 
-This architecture ensures that the supplier's local database remains 100% secure and isolated, while still providing automated, real-time responses and order processing to their clients.
+This architecture ensures that the supplier's local database remains 100% secure and isolated, while still providing automated, real-time responses and order processing to their clients [OrderBridge_Ai](https://github.com/YoFi-0/OrderBridge_Ai_Client) .
 
 ## Architecture
 The system is built on a highly decoupled, real-time architecture:
