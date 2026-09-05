@@ -38,3 +38,9 @@ The server is equipped with a dynamic routing system capable of handling the fol
    ```bash
    git clone [https://github.com/YoFi-0/OrderBridge_Ai.git](https://github.com/YoFi-0/OrderBridge_Ai.git)
    cd OrderBridge_Ai
+1. install node libs:
+   ```bash
+   yrarn
+1. run:
+   ```bash
+   yarn start
