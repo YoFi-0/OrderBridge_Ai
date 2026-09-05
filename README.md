@@ -40,7 +40,7 @@ The server is equipped with a dynamic routing system capable of handling the fol
    cd OrderBridge_Ai
 1. install node libs:
    ```bash
-   yrarn
+   yarn
 1. run:
    ```bash
    yarn dev
